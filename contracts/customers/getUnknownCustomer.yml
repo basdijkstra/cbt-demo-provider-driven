@@ -1,0 +1,18 @@
+name: get unknown customer
+description: Customer 99999 does not exist, which is reported as RFC 9457 problem details.
+request:
+  method: GET
+  url: /customers/99999
+  headers:
+    Accept: application/json
+response:
+  status: 404
+  headers:
+    Content-Type: application/problem+json
+  body:
+    title: Customer not found
+    status: 404
+  matchers:
+    headers:
+      - key: Content-Type
+        regex: 'application/problem\+json.*'

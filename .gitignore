@@ -1,0 +1,10 @@
+node_modules/
+dist/
+bin/
+obj/
+.vs/
+*.user
+
+# Spring Cloud Contract output and published stubs
+build/
+stubs/

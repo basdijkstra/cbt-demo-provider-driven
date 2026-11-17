@@ -1,0 +1,53 @@
+# Provider-driven contract testing with Spring Cloud Contract.
+#
+#   docker compose run --rm contract-tests    verify the provider against the contracts, publish the stubs
+#   docker compose up -d --wait stub-runner   serve the published stubs to the consumer on port 9876
+#
+# See README.md for the full demo script.
+
+services:
+  # The real Customer API, built from provider/CustomerApi.
+  provider:
+    build: ./provider/CustomerApi
+    ports:
+      - "5280:8080"
+
+  # Generates tests from contracts/ and runs them against the provider over HTTP.
+  # Only when all tests pass are the stubs packaged as customer-api-<version>-stubs.jar
+  # and published to ./stubs, a local Maven repository standing in for Artifactory or Nexus.
+  contract-tests:
+    image: springcloud/spring-cloud-contract:4.2.2
+    profiles: [verify]
+    depends_on: [provider]
+    environment:
+      APPLICATION_BASE_URL: http://provider:8080
+      PROJECT_GROUP: com.example
+      PROJECT_NAME: customer-api
+      # Override per run: docker compose run --rm -e PROJECT_VERSION=1.1.0 contract-tests
+      PROJECT_VERSION: 1.0.0
+      PUBLISH_ARTIFACTS: "false"
+      PUBLISH_ARTIFACTS_OFFLINE: "true"
+    volumes:
+      - ./contracts:/contracts:ro
+      # Build output: generated tests, test reports and the stubs, for inspection.
+      - ./build/contract-tests:/spring-cloud-contract-output
+      # Mount only the com/example subfolder: the image keeps its own Gradle plugin
+      # cached in /home/scc/.m2, and mounting over the whole folder hides it.
+      - ./stubs:/home/scc/.m2/repository/com/example
+
+  # Serves the latest published stubs (version '+') as a WireMock server on port 9876.
+  stub-runner:
+    image: springcloud/spring-cloud-contract-stub-runner:4.2.2
+    profiles: [stubs]
+    environment:
+      STUBRUNNER_IDS: com.example:customer-api:+:stubs:9876
+      STUBRUNNER_STUBS_MODE: LOCAL
+    ports:
+      - "9876:9876"
+    volumes:
+      - ./stubs:/home/scc/.m2/repository/com/example:ro
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9876/__admin/mappings"]
+      interval: 2s
+      timeout: 2s
+      retries: 60

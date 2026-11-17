@@ -1,0 +1,41 @@
+name: get existing customer
+description: |
+  Customer 12345 exists and is returned in full.
+
+  This contract is written and owned by the provider. It describes everything
+  the provider promises to return, not just the fields a particular consumer uses.
+request:
+  method: GET
+  url: /customers/12345
+  headers:
+    Accept: application/json
+response:
+  status: 200
+  headers:
+    Content-Type: application/json
+  body:
+    id: 12345
+    name: Susan Jones
+    status: ACTIVE
+    address:
+      street: Main Street
+      houseNumber: 15
+      city: New York
+      zipCode: Y1A 2B3
+    email: susan.jones@example.com
+    phone: "+1-555-555-0123"
+    lastModified: "2026-10-15T10:30:12Z"
+  matchers:
+    headers:
+      - key: Content-Type
+        regex: 'application/json.*'
+    body:
+      # Use single quotes for regexes: a backslash escape in a double-quoted
+      # YAML string can make Spring Cloud Contract skip this file without warning.
+      - path: $.status
+        type: by_regex
+        value: 'ACTIVE|INACTIVE'
+      # The predefined iso_date_time matcher rejects the trailing 'Z' that .NET emits.
+      - path: $.lastModified
+        type: by_regex
+        value: '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?Z'
